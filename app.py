@@ -230,7 +230,81 @@ async def oneribitir(ctx):
     await last_msg.edit(embed=final_embed)
     await last_msg.clear_reactions()
 
-# 4. YOUTUBE NOTIFIER SYSTEM (@WSDarkVex)
+# 5. COUNTING GAME SYSTEM (SAYI SAYMACA)
+counting_data = {
+    "current_number": 0,
+    "last_user_id": None
+}
+
+@bot.command(name="basla")
+@commands.has_permissions(administrator=True)
+async def basla(ctx):
+    global counting_data
+    counting_data["current_number"] = 0
+    counting_data["last_user_id"] = None
+    
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    
+    await ctx.send("🧮 **Sayı Sayma Başladı! Son sayı: 0**")
+
+@bot.event
+async def on_message(message: discord.Message):
+    global counting_data
+    if message.author.bot:
+        await bot.process_commands(message)
+        return
+
+    # Check if message is in a counting channel
+    if "sayı-saymaca" in message.channel.name.lower() or "saymaca" in message.channel.name.lower():
+        content = message.content.strip()
+        
+        # If it's a command starting with !, process commands normally
+        if content.startswith("!"):
+            await bot.process_commands(message)
+            return
+
+        # Try to parse as integer
+        try:
+            number = int(content)
+        except ValueError:
+            # Not a number in counting channel -> delete
+            try:
+                await message.delete()
+            except:
+                pass
+            return
+
+        expected_number = counting_data["current_number"] + 1
+
+        if number == expected_number:
+            counting_data["current_number"] = number
+            counting_data["last_user_id"] = message.author.id
+            try:
+                await message.add_reaction("✅")
+            except:
+                pass
+        else:
+            # Wrong number
+            try:
+                await message.delete()
+            except:
+                pass
+            
+            warn_msg = await message.channel.send(f"{message.author.mention} **Yanlış Yaptın, Tekrar Bak!** (Beklenen: `{expected_number}`)")
+            import asyncio
+            await asyncio.sleep(4)
+            try:
+                await warn_msg.delete()
+            except:
+                pass
+            return
+
+    await bot.process_commands(message)
+
+# 4. YOUTUBE NOTIFIER SYSTEM (@WSDarkVex) - Every 30 seconds
 last_video_id = None
 
 @tasks.loop(seconds=30)
