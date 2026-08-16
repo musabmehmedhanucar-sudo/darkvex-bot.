@@ -20,7 +20,7 @@ def run_flask():
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
 
-# --- MASTER DISCORD BOT (Ticket + Cezalar + Öneri + YouTube) ---
+# --- MASTER DISCORD BOT ---
 intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
@@ -28,6 +28,16 @@ intents.members = True
 intents.moderation = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+# 0. AUTO ROLE ON JOIN
+@bot.event
+async def on_member_join(member: discord.Member):
+    role = discord.utils.get(member.guild.roles, name="Üye")
+    if role:
+        try:
+            await member.add_roles(role)
+        except Exception as e:
+            print(f"Oto rol verme hatası: {e}")
 
 # 1. TICKET SYSTEM
 class CloseView(View):
@@ -220,7 +230,7 @@ async def oneribitir(ctx):
     await last_msg.edit(embed=final_embed)
     await last_msg.clear_reactions()
 
-# 4. YOUTUBE NOTIFIER SYSTEM (@WSDarkVex) - Every 30 seconds
+# 4. YOUTUBE NOTIFIER SYSTEM (@WSDarkVex)
 last_video_id = None
 
 @tasks.loop(seconds=30)
