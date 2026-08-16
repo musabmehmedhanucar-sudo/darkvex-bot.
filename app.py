@@ -257,20 +257,16 @@ async def on_message(message: discord.Message):
         await bot.process_commands(message)
         return
 
-    # Check if message is in a counting channel
     if "sayı-saymaca" in message.channel.name.lower() or "saymaca" in message.channel.name.lower():
         content = message.content.strip()
         
-        # If it's a command starting with !, process commands normally
         if content.startswith("!"):
             await bot.process_commands(message)
             return
 
-        # Try to parse as integer
         try:
             number = int(content)
         except ValueError:
-            # Not a number in counting channel -> delete
             try:
                 await message.delete()
             except:
@@ -283,11 +279,15 @@ async def on_message(message: discord.Message):
             counting_data["current_number"] = number
             counting_data["last_user_id"] = message.author.id
             try:
-                await message.add_reaction("✅")
+                # Use custom server emoji :kirmizitik: if available, fallback to standard tick
+                kirmizi_tik = discord.utils.get(message.guild.emojis, name="kirmizitik")
+                if kirmizi_tik:
+                    await message.add_reaction(kirmizi_tik)
+                else:
+                    await message.add_reaction("✅")
             except:
                 pass
         else:
-            # Wrong number
             try:
                 await message.delete()
             except:
