@@ -262,7 +262,7 @@ async def check_youtube():
                                     )
                                     embed.set_thumbnail(url=bot.user.display_avatar.url if bot.user else None)
                                     embed.set_footer(text="DarkVex YouTube Notifications", icon_url=guild.icon.url if guild.icon else None)
-                                    await channel.send(content="@everyone 🚀 **YENİ VİDEO ŞUAN KANALIMIZDA YAYINDA!**", embed=embed)
+                                    await channel.send(content="@everyone 🚀 **YENİ VİDEO ŞUAN KANALIMIZDA YAYINDA!** ||@here||", embed=embed)
     except Exception as e:
         print(f"YouTube kontrol hatası: {e}")
 
