@@ -2,9 +2,12 @@ import os
 from flask import Flask
 import threading
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ui import Button, View
 from datetime import datetime
+import requests
+import xml.etree.ElementTree as ET
+import re
 
 # --- FLASK KEEP-ALIVE SERVER ---
 app = Flask(__name__)
@@ -17,7 +20,7 @@ def run_flask():
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
 
-# --- MASTER DISCORD BOT (Ticket + Cezalar + Öneri) ---
+# --- MASTER DISCORD BOT (Ticket + Cezalar + Öneri + YouTube) ---
 intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
@@ -217,9 +220,61 @@ async def oneribitir(ctx):
     await last_msg.edit(embed=final_embed)
     await last_msg.clear_reactions()
 
+# 4. YOUTUBE NOTIFIER SYSTEM (@WSDarkVex) - Every 30 seconds
+last_video_id = None
+
+@tasks.loop(seconds=30)
+async def check_youtube():
+    global last_video_id
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        resp = requests.get("https://www.youtube.com/@WSDarkVex", headers=headers, timeout=10)
+        if resp.status_code == 200:
+            match = re.search(r'"channelId":"(UC[a-zA-Z0-9_-]+)"', resp.text)
+            if match:
+                channel_id = match.group(1)
+                rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
+                rss_resp = requests.get(rss_url, timeout=10)
+                if rss_resp.status_code == 200:
+                    root = ET.fromstring(rss_resp.content)
+                    ns = {'atom': 'http://www.w3.org/2005/Atom'}
+                    entries = root.findall('atom:entry', ns)
+                    if entries:
+                        latest = entries[0]
+                        vid_id = latest.find('atom:id', ns).text
+                        vid_title = latest.find('atom:title', ns).text
+                        vid_link = latest.find('atom:link', ns).attrib['href']
+                        
+                        if last_video_id is None:
+                            last_video_id = vid_id
+                        elif last_video_id != vid_id:
+                            last_video_id = vid_id
+                            for guild in bot.guilds:
+                                channel = discord.utils.get(guild.text_channels, name="video-duyuru")
+                                if not channel:
+                                    channel = discord.utils.get(guild.text_channels, name="📷video-duyuru")
+                                if channel:
+                                    embed = discord.Embed(
+                                        title="📢 YENİ VİDEO YAYINDA!",
+                                        description=f"**{vid_title}**\n\n[Videoyu İzlemek İçin Tıkla]({vid_link})",
+                                        color=0xff0000,
+                                        timestamp=datetime.now()
+                                    )
+                                    embed.set_thumbnail(url=bot.user.display_avatar.url if bot.user else None)
+                                    embed.set_footer(text="DarkVex YouTube Notifications", icon_url=guild.icon.url if guild.icon else None)
+                                    await channel.send(content="@everyone 🚀 **YENİ VİDEO ŞUAN KANALIMIZDA YAYINDA!**", embed=embed)
+    except Exception as e:
+        print(f"YouTube kontrol hatası: {e}")
+
+@check_youtube.before_loop
+async def before_check_youtube():
+    await bot.wait_until_ready()
+
 @bot.event
 async def on_ready():
     print(f"DarkVex Master Bot aktif ve hazir: {bot.user.name}")
+    if not check_youtube.is_running():
+        check_youtube.start()
 
 # --- MAIN RUNNER ---
 if __name__ == "__main__":
