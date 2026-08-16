@@ -87,7 +87,7 @@ class TicketView(View):
 async def setup(ctx):
     embed = discord.Embed(
         title="🛡️ DARKVEX SUPPORT CENTER",
-        description="Destek talebi açmak için aşağıdaki butona tıklayın.",
+        description="Yardıma mı ihtiyacın var?\nBir sorun, öneri veya şikayetin için aşağıdan destek talebi oluşturabilirsin.\n\n*Yetkililer en kısa sürede seninle iletişime geçecektir.*",
         color=0xff0000
     )
     embed.set_thumbnail(url=bot.user.display_avatar.url if bot.user else None)
