@@ -53,7 +53,7 @@ class TicketView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="🎫 Destek Talebi Aç", style=discord.ButtonStyle.success, emoji="🖤", custom_id="create_ticket")
+    @discord.ui.button(label="🎫 Destek Talebi Aç", style=discord.ButtonStyle.success, emoji="🛡️", custom_id="create_ticket")
     async def create_ticket(self, interaction: discord.Interaction, button: Button):
         guild = interaction.guild
         category = discord.utils.get(guild.categories, name="VENOM TICKETS")
