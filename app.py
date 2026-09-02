@@ -14,7 +14,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "DarkVex Master Bot 7/24 Aktif ve Calisiyor!"
+    return "Venom Master Bot 7/24 Aktif ve Calisiyor!"
 
 def run_flask():
     port = int(os.environ.get("PORT", 5000))
@@ -53,12 +53,12 @@ class TicketView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="🎫 Destek Talebi Aç", style=discord.ButtonStyle.success, emoji="🛡️", custom_id="create_ticket")
+    @discord.ui.button(label="🎫 Destek Talebi Aç", style=discord.ButtonStyle.success, emoji="🖤", custom_id="create_ticket")
     async def create_ticket(self, interaction: discord.Interaction, button: Button):
         guild = interaction.guild
-        category = discord.utils.get(guild.categories, name="DARKVEX TICKETS")
+        category = discord.utils.get(guild.categories, name="VENOM TICKETS")
         if not category:
-            category = await guild.create_category("DARKVEX TICKETS")
+            category = await guild.create_category("VENOM TICKETS")
 
         existing_channel = discord.utils.get(guild.text_channels, name=f"ticket-{interaction.user.name.lower()}")
         if existing_channel:
@@ -86,11 +86,11 @@ class TicketView(View):
         )
 
         embed = discord.Embed(
-            title="🛡️ DarkVex | Destek Talebi",
+            title="⬛ Venom | Destek Talebi",
             description=f"Merhaba {interaction.user.mention}!\n\nYetkili ekibimiz en kısa sürede seninle ilgilenecektir.",
-            color=0xff0000
+            color=0x000000
         )
-        embed.set_footer(text="DarkVex Security & Support", icon_url=bot.user.display_avatar.url if bot.user else None)
+        embed.set_footer(text="Venom Security & Support", icon_url=bot.user.display_avatar.url if bot.user else None)
         
         await channel.send(embed=embed, view=CloseView())
         await interaction.response.send_message(f"✅ Destek talebin başarıyla oluşturuldu: {channel.mention}", ephemeral=True)
@@ -99,12 +99,12 @@ class TicketView(View):
 @commands.has_permissions(administrator=True)
 async def setup(ctx):
     embed = discord.Embed(
-        title="🛡️ DARKVEX SUPPORT CENTER",
+        title="⚫ VENOM SUPPORT CENTER",
         description="Yardıma mı ihtiyacın var?\nBir sorun, öneri veya şikayetin için aşağıdan destek talebi oluşturabilirsin.\n\n*Yetkililer en kısa sürede seninle iletişime geçecektir.*",
-        color=0xff0000
+        color=0x000000
     )
     embed.set_thumbnail(url=bot.user.display_avatar.url if bot.user else None)
-    embed.set_footer(text="DarkVex Security - 2026", icon_url=bot.user.display_avatar.url if bot.user else None)
+    embed.set_footer(text="Venom Security - 2026", icon_url=bot.user.display_avatar.url if bot.user else None)
     await ctx.send(embed=embed, view=TicketView())
 
 # 2. PUNISHMENT LOGGING (CEZALAR)
@@ -118,7 +118,7 @@ async def send_punishment_embed(guild: discord.Guild, title: str, description: s
         channel = await guild.create_text_channel("⛔ceza-kanalı")
     
     embed = discord.Embed(title=title, description=description, color=color, timestamp=datetime.now())
-    embed.set_footer(text="DarkVex Security & Justice System", icon_url=bot.user.display_avatar.url if bot.user else None)
+    embed.set_footer(text="Venom Security & Justice System", icon_url=bot.user.display_avatar.url if bot.user else None)
     await channel.send(embed=embed)
 
 @bot.event
@@ -131,7 +131,7 @@ async def on_member_ban(guild: discord.Guild, user: discord.User):
             reason = entry.reason if entry.reason else "Belirtilmedi"
             break
     desc = f"⚠️ **Ceza Alan Üye:** {user.mention} (`{user.name}`)\n🛡️ **İşlemi Yapan:** {moderator}\n⚖️ **Tür:** Sunucudan Kalıcı Ban\n📝 **Gerekçe:** `{reason}`"
-    await send_punishment_embed(guild, "🚨 DARKVEX | YENİ BAN CEZASI", desc, 0xff0000)
+    await send_punishment_embed(guild, "🏴 VENOM | YENİ BAN CEZASI", desc, 0x000000)
 
 @bot.event
 async def on_member_update(before: discord.Member, after: discord.Member):
@@ -147,7 +147,7 @@ async def on_member_update(before: discord.Member, after: discord.Member):
         minutes = (total_seconds % 3600) // 60
         duration_str = f"{hours} saat {minutes} dakika" if hours > 0 else f"{minutes} dakika"
         desc = f"🔇 **Ceza Alan Üye:** {after.mention}\n🛡️ **İşlemi Yapan:** {moderator}\n⚖️ **Tür:** Susturma (Timeout)\n⏳ **Süre:** `{duration_str}`"
-        await send_punishment_embed(guild=after.guild, title="🔇 DARKVEX | SUSTURMA CEZASI", description=desc, color=0xffaa00)
+        await send_punishment_embed(guild=after.guild, title="🔇 VENOM | SUSTURMA CEZASI", description=desc, color=0x0b0b0b)
 
 # 3. SUGGESTION SYSTEM (ÖNERİ)
 @bot.command(name="oneri")
@@ -167,16 +167,16 @@ async def oneri(ctx, *, content: str = None):
         suggestion = content.replace(target_channel.mention, "").strip()
 
     embed = discord.Embed(
-        title="🌟 DARKVEX | YENİ TOPLULUK ÖNERİSİ",
+        title="◼️ VENOM | YENİ TOPLULUK ÖNERİSİ",
         description=f"```{suggestion}```",
-        color=0xff0000,
+        color=0x000000,
         timestamp=datetime.now()
     )
     embed.add_field(name="👤 Öneren Üye", value=ctx.author.mention, inline=True)
     embed.add_field(name="📊 Oylama Durumu", value="⏳ `Değerlendiriliyor...`", inline=True)
     embed.set_author(name=f"{ctx.author.name} tarafından önerildi", icon_url=ctx.author.display_avatar.url)
     embed.set_thumbnail(url=bot.user.display_avatar.url if bot.user else None)
-    embed.set_footer(text=f"DarkVex Community • {ctx.guild.name}", icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
+    embed.set_footer(text=f"Venom Community • {ctx.guild.name}", icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
 
     msg = await target_channel.send(embed=embed)
     await msg.add_reaction("👍")
@@ -214,10 +214,10 @@ async def oneribitir(ctx):
             downvotes = reaction.count - 1
 
     decision = "✅ KABUL EDİLDİ" if upvotes > downvotes else ("❌ REDDEDİLDİ" if downvotes > upvotes else "🤝 BERABERE")
-    decision_color = 0x2ec530 if upvotes > downvotes else (0xff5f56 if downvotes > upvotes else 0xffbd2e)
+    decision_color = 0x0b0b0b if upvotes > downvotes else (0x0b0b0b if downvotes > upvotes else 0x0b0b0b)
 
     orig_embed = last_msg.embeds[0]
-    final_embed = discord.Embed(title=f"🗳️ DARKVEX | ÖNERİ SONUÇLANDI", description=orig_embed.description, color=decision_color, timestamp=datetime.now())
+    final_embed = discord.Embed(title=f"🗳️ VENOM | ÖNERİ SONUÇLANDI", description=orig_embed.description, color=decision_color, timestamp=datetime.now())
     final_embed.set_author(name=orig_embed.author.name, icon_url=orig_embed.author.icon_url)
     final_embed.set_thumbnail(url=orig_embed.thumbnail.url)
     final_embed.add_field(name="👤 Öneren Üye", value=orig_embed.fields[0].value, inline=True)
@@ -279,7 +279,6 @@ async def on_message(message: discord.Message):
             counting_data["current_number"] = number
             counting_data["last_user_id"] = message.author.id
             try:
-                # Use custom server emoji :kirmizitik: if available, fallback to standard tick
                 kirmizi_tik = discord.utils.get(message.guild.emojis, name="kirmizitik")
                 if kirmizi_tik:
                     await message.add_reaction(kirmizi_tik)
@@ -304,7 +303,7 @@ async def on_message(message: discord.Message):
 
     await bot.process_commands(message)
 
-# 4. YOUTUBE NOTIFIER SYSTEM (@WSDarkVex) - Every 30 seconds
+# 4. YOUTUBE NOTIFIER SYSTEM (@WSVenom) - Every 30 seconds
 last_video_id = None
 
 @tasks.loop(seconds=30)
@@ -312,7 +311,7 @@ async def check_youtube():
     global last_video_id
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        resp = requests.get("https://www.youtube.com/@WSDarkVex", headers=headers, timeout=10)
+        resp = requests.get("https://www.youtube.com/@WSVenom", headers=headers, timeout=10)
         if resp.status_code == 200:
             match = re.search(r'"channelId":"(UC[a-zA-Z0-9_-]+)"', resp.text)
             if match:
@@ -341,14 +340,14 @@ async def check_youtube():
                                     embed = discord.Embed(
                                         title="📢 YENİ VİDEO YAYINDA!",
                                         description=f"**{vid_title}**\n\n[Videoyu İzlemek İçin Tıkla]({vid_link})",
-                                        color=0xff0000,
+                                        color=0x000000,
                                         timestamp=datetime.now()
                                     )
                                     embed.set_thumbnail(url=bot.user.display_avatar.url if bot.user else None)
-                                    embed.set_footer(text="DarkVex YouTube Notifications", icon_url=guild.icon.url if guild.icon else None)
+                                    embed.set_footer(text="Venom YouTube RSS", icon_url=guild.icon.url if guild.icon else None)
                                     await channel.send(content="@everyone 🚀 **YENİ VİDEO ŞUAN KANALIMIZDA YAYINDA!** ||@here||", embed=embed)
-    except Exception as e:
-        print(f"YouTube kontrol hatası: {e}")
+    except Exception as int_e:
+        print(f"YouTube kontrol hatası: {int_e}")
 
 @check_youtube.before_loop
 async def before_check_youtube():
@@ -356,7 +355,7 @@ async def before_check_youtube():
 
 @bot.event
 async def on_ready():
-    print(f"DarkVex Master Bot aktif ve hazir: {bot.user.name}")
+    print(f"Venom Master Bot aktif ve hazir: {bot.user.name}")
     if not check_youtube.is_running():
         check_youtube.start()
 
