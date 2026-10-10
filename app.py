@@ -107,7 +107,13 @@ async def setup(ctx):
     embed.set_footer(text="Venom Security - 2026", icon_url=bot.user.display_avatar.url if bot.user else None)
     await ctx.send(embed=embed, view=TicketView())
 
-@bot.command(name="honeypot")
+honeypot_data = {
+    "mutes_count": 0,
+    "embed_message_id": None,
+    "embed_channel_id": None
+}
+
+@bot.command(name="honey", aliases=["honeypot"])
 @commands.has_permissions(administrator=True)
 async def honeypot_setup(ctx):
     try:
@@ -119,8 +125,12 @@ async def honeypot_setup(ctx):
         description="Bu kanal r4t yiyenleri yakalamak için, mesaj yazarsan mute yersin. | This channel trap for r4t users, if you send message you will get mute.",
         color=0x0b0b0b
     )
+    embed.add_field(name="🍯 Mute", value=f"`{honeypot_data['mutes_count']}`", inline=False)
     embed.set_footer(text="Venom Security & Honeypot System", icon_url=bot.user.display_avatar.url if bot.user else None)
-    await ctx.send(embed=embed)
+    
+    msg = await ctx.send(embed=embed)
+    honeypot_data["embed_message_id"] = msg.id
+    honeypot_data["embed_channel_id"] = ctx.channel.id
 
 # 2. PUNISHMENT LOGGING (CEZALAR)
 async def send_punishment_embed(guild: discord.Guild, title: str, description: str, color: int):
@@ -277,6 +287,11 @@ async def on_message(message: discord.Message):
     print(f"[DEBUG] Mesaj algılandı. Kanal: {channel_name}, Yazar: {message.author}")
     if "bedava" in channel_name or "hile" in channel_name or "free" in channel_name or "hack" in channel_name:
         try:
+            await message.delete()
+        except Exception as e:
+            print(f"Honeypot mesaj silme hatası: {e}")
+
+        try:
             await message.author.timeout(timedelta(days=1), reason="Honeypot kanalına mesaj yazma girişimi (Bedava Hile Tuzağı)")
         except Exception as e:
             print(f"Honeypot timeout hatası: {e}")
@@ -288,10 +303,19 @@ async def on_message(message: discord.Message):
             except Exception as e:
                 print(f"Kanal temizleme hatası ({c.name}): {e}")
 
-        try:
-            await message.channel.send(f"{message.author.mention} muted")
-        except:
-            pass
+        honeypot_data["mutes_count"] += 1
+        if honeypot_data["embed_message_id"] and honeypot_data["embed_channel_id"] == message.channel.id:
+            try:
+                ch = message.guild.get_channel(honeypot_data["embed_channel_id"])
+                if ch:
+                    msg_to_edit = await ch.fetch_message(honeypot_data["embed_message_id"])
+                    if msg_to_edit:
+                        embed = msg_to_edit.embeds[0]
+                        embed.clear_fields()
+                        embed.add_field(name="🍯 Mute", value=f"`{honeypot_data['mutes_count']}`", inline=False)
+                        await msg_to_edit.edit(embed=embed)
+            except Exception as e:
+                print(f"Honeypot embed güncelleme hatası: {e}")
         return
 
     if "sayı-saymaca" in message.channel.name.lower() or "saymaca" in message.channel.name.lower():
