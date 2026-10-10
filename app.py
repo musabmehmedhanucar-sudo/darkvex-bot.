@@ -110,7 +110,8 @@ async def setup(ctx):
 honeypot_data = {
     "mutes_count": 0,
     "embed_message_id": None,
-    "embed_channel_id": None
+    "embed_channel_id": None,
+    "webhook_id": None
 }
 
 @bot.command(name="honey", aliases=["honeypot"])
@@ -120,6 +121,15 @@ async def honeypot_setup(ctx):
         await ctx.message.delete()
     except:
         pass
+        
+    webhooks = await ctx.channel.webhooks()
+    webhook = discord.utils.get(webhooks, name="Venom Honeypot")
+    if not webhook:
+        try:
+            webhook = await ctx.channel.create_webhook(name="Venon Honeypot")
+        except Exception as e:
+            print(f"Webhook oluşturma hatası: {e}")
+
     embed = discord.Embed(
         title="MESAJ YAZARSAN MUTE YERSİN | IF YOU SEND MESSAGE YOU WILL GET MUTE",
         description="Bu kanal r4t yiyenleri yakalamak için, mesaj yazarsan mute yersin. | This channel trap for r4t users, if you send message you will get mute.",
@@ -128,9 +138,20 @@ async def honeypot_setup(ctx):
     embed.add_field(name="🍯 Mute", value=f"`{honeypot_data['mutes_count']}`", inline=False)
     embed.set_footer(text="Venom Security & Honeypot System", icon_url=bot.user.display_avatar.url if bot.user else None)
     
-    msg = await ctx.send(embed=embed)
-    honeypot_data["embed_message_id"] = msg.id
-    honeypot_data["embed_channel_id"] = ctx.channel.id
+    if webhook:
+        msg = await webhook.send(
+            embed=embed,
+            username="Honeypot",
+            avatar_url="https://images.emojiterra.com/google/android-11/512px/1f36f.png",
+            wait=True
+        )
+        honeypot_data["embed_message_id"] = msg.id
+        honeypot_data["embed_channel_id"] = ctx.channel.id
+        honeypot_data["webhook_id"] = webhook.id
+    else:
+        msg = await ctx.send(embed=embed)
+        honeypot_data["embed_message_id"] = msg.id
+        honeypot_data["embed_channel_id"] = ctx.channel.id
 
 # 2. PUNISHMENT LOGGING (CEZALAR)
 async def send_punishment_embed(guild: discord.Guild, title: str, description: str, color: int):
@@ -308,8 +329,25 @@ async def on_message(message: discord.Message):
             try:
                 ch = message.guild.get_channel(honeypot_data["embed_channel_id"])
                 if ch:
-                    msg_to_edit = await ch.fetch_message(honeypot_data["embed_message_id"])
-                    if msg_to_edit:
+                    if honeypot_data.get("webhook_id"):
+                        try:
+                            webhook = await ch.fetch_webhook(honeypot_data["webhook_id"])
+                            embed = discord.Embed(
+                                title="MESAJ YAZARSAN MUTE YERSİN | IF YOU SEND MESSAGE YOU WILL GET MUTE",
+                                description="Bu kanal r4t yiyenleri yakalamak için, mesaj yazarsan mute yersin. | This channel trap for r4t users, if you send message you will get mute.",
+                                color=0x0b0b0b
+                            )
+                            embed.add_field(name="🍯 Mute", value=f"`{honeypot_data['mutes_count']}`", inline=False)
+                            embed.set_footer(text="Venom Security & Honeypot System", icon_url=bot.user.display_avatar.url if bot.user else None)
+                            await webhook.edit_message(honeypot_data["embed_message_id"], embed=embed)
+                        except:
+                            msg_to_edit = await ch.fetch_message(honeypot_data["embed_message_id"])
+                            embed = msg_to_edit.embeds[0]
+                            embed.clear_fields()
+                            embed.add_field(name="🍯 Mute", value=f"`{honeypot_data['mutes_count']}`", inline=False)
+                            await msg_to_edit.edit(embed=embed)
+                    else:
+                        msg_to_edit = await ch.fetch_message(honeypot_data["embed_message_id"])
                         embed = msg_to_edit.embeds[0]
                         embed.clear_fields()
                         embed.add_field(name="🍯 Mute", value=f"`{honeypot_data['mutes_count']}`", inline=False)
