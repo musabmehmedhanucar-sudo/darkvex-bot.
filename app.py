@@ -4,7 +4,7 @@ import threading
 import discord
 from discord.ext import commands, tasks
 from discord.ui import Button, View
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import requests
 import xml.etree.ElementTree as ET
 import re
@@ -257,6 +257,28 @@ async def on_message(message: discord.Message):
         await bot.process_commands(message)
         return
 
+    # Honeypot Check (Bedava Hile Kanalı Tuzağı)
+    channel_name = message.channel.name.lower()
+    print(f"[DEBUG] Mesaj algılandı. Kanal: {channel_name}, Yazar: {message.author}")
+    if "bedava" in channel_name or "hile" in channel_name or "free" in channel_name or "hack" in channel_name:
+        try:
+            await message.author.timeout(timedelta(days=1), reason="Honeypot kanalına mesaj yazma girişimi (Bedava Hile Tuzağı)")
+        except Exception as e:
+            print(f"Honeypot timeout hatası: {e}")
+
+        two_hours_ago = datetime.now(timezone.utc) - timedelta(hours=2)
+        try:
+            await message.channel.purge(limit=100, check=lambda m: m.author.id == message.author.id and m.created_at >= two_hours_ago)
+        except Exception as e:
+            print(f"Honeypot mesaj temizleme hatası: {e}")
+
+        try:
+            warn_msg = await message.channel.send(f"🚨 {message.author.mention} **Tuzak Kanal!** Bu kanal honeypot koruması altındadır. 1 gün süreyle susturuldunuz ve son 2 saatteki mesajlarınız temizlendi.", delete_after=10)
+            await warn_msg.delete()
+        except:
+            pass
+        return
+
     if "sayı-saymaca" in message.channel.name.lower() or "saymaca" in message.channel.name.lower():
         content = message.content.strip()
         
@@ -365,7 +387,7 @@ if __name__ == "__main__":
     t.daemon = True
     t.start()
 
-    TOKEN = os.environ.get("DISCORD_TOKEN")
+    TOKEN = os.environ.get("DISCORD Developer Portal" if False else "DISCORD_TOKEN")
     if not TOKEN:
         raise ValueError("DISCORD_TOKEN bulunamadi!")
     bot.run(TOKEN)
