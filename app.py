@@ -107,6 +107,21 @@ async def setup(ctx):
     embed.set_footer(text="Venom Security - 2026", icon_url=bot.user.display_avatar.url if bot.user else None)
     await ctx.send(embed=embed, view=TicketView())
 
+@bot.command(name="honeypot")
+@commands.has_permissions(administrator=True)
+async def honeypot_setup(ctx):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    embed = discord.Embed(
+        title="MESAJ YAZARSAN MUTE YERSİN | IF YOU SEND MESSAGE YOU WILL GET MUTE",
+        description="Bu kanal r4t yiyenleri yakalamak için, mesaj yazarsan mute yersin. | This channel trap for r4t users, if you send message you will get mute.",
+        color=0x0b0b0b
+    )
+    embed.set_footer(text="Venom Security & Honeypot System", icon_url=bot.user.display_avatar.url if bot.user else None)
+    await ctx.send(embed=embed)
+
 # 2. PUNISHMENT LOGGING (CEZALAR)
 async def send_punishment_embed(guild: discord.Guild, title: str, description: str, color: int):
     channel = None
@@ -267,14 +282,14 @@ async def on_message(message: discord.Message):
             print(f"Honeypot timeout hatası: {e}")
 
         two_hours_ago = datetime.now(timezone.utc) - timedelta(hours=2)
-        try:
-            await message.channel.purge(limit=100, check=lambda m: m.author.id == message.author.id and m.created_at >= two_hours_ago)
-        except Exception as e:
-            print(f"Honeypot mesaj temizleme hatası: {e}")
+        for c in message.guild.text_channels:
+            try:
+                await c.purge(limit=100, check=lambda m: m.author.id == message.author.id and m.created_at >= two_hours_ago)
+            except Exception as e:
+                print(f"Kanal temizleme hatası ({c.name}): {e}")
 
         try:
-            warn_msg = await message.channel.send(f"🚨 {message.author.mention} **Tuzak Kanal!** Bu kanal honeypot koruması altındadır. 1 gün süreyle susturuldunuz ve son 2 saatteki mesajlarınız temizlendi.", delete_after=10)
-            await warn_msg.delete()
+            await message.channel.send(f"{message.author.mention} muted")
         except:
             pass
         return
