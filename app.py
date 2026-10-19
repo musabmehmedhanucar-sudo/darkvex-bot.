@@ -14,7 +14,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Venom Master Bot 7/24 Aktif ve Calisiyor!"
+    return "006 Master Bot 7/24 Aktif ve Calisiyor!"
 
 def run_flask():
     port = int(os.environ.get("PORT", 5000))
@@ -32,7 +32,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # 0. AUTO ROLE ON JOIN
 @bot.event
 async def on_member_join(member: discord.Member):
-    role = discord.utils.get(member.guild.roles, name="Üye")
+    role = discord.utils.get(member.guild.roles, name="Member")
     if role:
         try:
             await member.add_roles(role)
@@ -56,9 +56,9 @@ class TicketView(View):
     @discord.ui.button(label="🎫 Destek Talebi Aç", style=discord.ButtonStyle.success, emoji="🛡️", custom_id="create_ticket")
     async def create_ticket(self, interaction: discord.Interaction, button: Button):
         guild = interaction.guild
-        category = discord.utils.get(guild.categories, name="VENOM TICKETS")
+        category = discord.utils.get(guild.categories, name="006 TICKETS")
         if not category:
-            category = await guild.create_category("VENOM TICKETS")
+            category = await guild.create_category("006 TICKETS")
 
         existing_channel = discord.utils.get(guild.text_channels, name=f"ticket-{interaction.user.name.lower()}")
         if existing_channel:
@@ -72,7 +72,7 @@ class TicketView(View):
         }
 
         for role in guild.roles:
-            if role.name in ["👤Üye", "Abone", "Üye"]:
+            if role.name in ["👤Üye", "Subscriber", "Member"]:
                 overwrites[role] = discord.PermissionOverwrite(view_channel=False)
 
         for role in guild.roles:
@@ -86,11 +86,11 @@ class TicketView(View):
         )
 
         embed = discord.Embed(
-            title="⬛ Venom | Destek Talebi",
+            title="⬜ 006 | Destek Talebi",
             description=f"Merhaba {interaction.user.mention}!\n\nYetkili ekibimiz en kısa sürede seninle ilgilenecektir.",
             color=0x000000
         )
-        embed.set_footer(text="Venom Security & Support", icon_url=bot.user.display_avatar.url if bot.user else None)
+        embed.set_footer(text="006 Security & Support", icon_url=bot.user.display_avatar.url if bot.user else None)
         
         await channel.send(embed=embed, view=CloseView())
         await interaction.response.send_message(f"✅ Destek talebin başarıyla oluşturuldu: {channel.mention}", ephemeral=True)
@@ -99,12 +99,12 @@ class TicketView(View):
 @commands.has_permissions(administrator=True)
 async def setup(ctx):
     embed = discord.Embed(
-        title="⚫ VENOM SUPPORT CENTER",
+        title="⚪ 006 SUPPORT CENTER",
         description="Yardıma mı ihtiyacın var?\nBir sorun, öneri veya şikayetin için aşağıdan destek talebi oluşturabilirsin.\n\n*Yetkililer en kısa sürede seninle iletişime geçecektir.*",
         color=0x000000
     )
     embed.set_thumbnail(url=bot.user.display_avatar.url if bot.user else None)
-    embed.set_footer(text="Venom Security - 2026", icon_url=bot.user.display_avatar.url if bot.user else None)
+    embed.set_footer(text="006 Security - 2026", icon_url=bot.user.display_avatar.url if bot.user else None)
     await ctx.send(embed=embed, view=TicketView())
 
 honeypot_data = {
@@ -123,20 +123,20 @@ async def honeypot_setup(ctx):
         pass
         
     webhooks = await ctx.channel.webhooks()
-    webhook = discord.utils.get(webhooks, name="Venom Honeypot")
+    webhook = discord.utils.get(webhooks, name="006 Honeypot")
     if not webhook:
         try:
-            webhook = await ctx.channel.create_webhook(name="Venon Honeypot")
+            webhook = await ctx.channel.create_webhook(name="006 Honeypot")
         except Exception as e:
             print(f"Webhook oluşturma hatası: {e}")
 
     embed = discord.Embed(
         title="MESAJ YAZARSAN MUTE YERSİN | IF YOU SEND MESSAGE YOU WILL GET MUTE",
         description="Bu kanal r4t yiyenleri yakalamak için, mesaj yazarsan mute yersin. | This channel trap for r4t users, if you send message you will get mute.",
-        color=0x0b0b0b
+        color=0xD4AF37
     )
     embed.add_field(name="🍯 Mute", value=f"`{honeypot_data['mutes_count']}`", inline=False)
-    embed.set_footer(text="Venom Security & Honeypot System", icon_url=bot.user.display_avatar.url if bot.user else None)
+    embed.set_footer(text="006 Security & Honeypot System", icon_url=bot.user.display_avatar.url if bot.user else None)
     
     if webhook:
         msg = await webhook.send(
@@ -164,11 +164,11 @@ async def send_punishment_embed(guild: discord.Guild, title: str, description: s
         channel = await guild.create_text_channel("⛔ceza-kanalı")
     
     embed = discord.Embed(title=title, description=description, color=color, timestamp=datetime.now())
-    embed.set_footer(text="Venom Security & Justice System", icon_url=bot.user.display_avatar.url if bot.user else None)
+    embed.set_footer(text="006 Security & Justice System", icon_url=bot.user.display_avatar.url if bot.user else None)
     await channel.send(embed=embed)
 
 @bot.event
-async def on_member_ban(guild: discord.Guild, user: discord.User):
+async def on_member_ban(guild: discord.Guild, user: d	iscord.User):
     moderator = "Bilinmiyor"
     reason = "Belirtilmedi"
     async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.ban):
@@ -177,7 +177,7 @@ async def on_member_ban(guild: discord.Guild, user: discord.User):
             reason = entry.reason if entry.reason else "Belirtilmedi"
             break
     desc = f"⚠️ **Ceza Alan Üye:** {user.mention} (`{user.name}`)\n🛡️ **İşlemi Yapan:** {moderator}\n⚖️ **Tür:** Sunucudan Kalıcı Ban\n📝 **Gerekçe:** `{reason}`"
-    await send_punishment_embed(guild, "🏴 VENOM | YENİ BAN CEZASI", desc, 0x000000)
+    await send_punishment_embed(guild, "🏳️ 006 | YENİ BAN CEZASI", desc, 0x000000)
 
 @bot.event
 async def on_member_update(before: discord.Member, after: discord.Member):
@@ -193,7 +193,7 @@ async def on_member_update(before: discord.Member, after: discord.Member):
         minutes = (total_seconds % 3600) // 60
         duration_str = f"{hours} saat {minutes} dakika" if hours > 0 else f"{minutes} dakika"
         desc = f"🔇 **Ceza Alan Üye:** {after.mention}\n🛡️ **İşlemi Yapan:** {moderator}\n⚖️ **Tür:** Susturma (Timeout)\n⏳ **Süre:** `{duration_str}`"
-        await send_punishment_embed(guild=after.guild, title="🔇 VENOM | SUSTURMA CEZASI", description=desc, color=0x0b0b0b)
+        await send_punishment_embed(guild=after.guild, title="🔇 006 | SUSTURMA CEZASI", description=desc, color=0xD4AF37)
 
 # 3. SUGGESTION SYSTEM (ÖNERİ)
 @bot.command(name="oneri")
@@ -213,7 +213,7 @@ async def oneri(ctx, *, content: str = None):
         suggestion = content.replace(target_channel.mention, "").strip()
 
     embed = discord.Embed(
-        title="◼️ VENOM | YENİ TOPLULUK ÖNERİSİ",
+        title="⬜ 006 | YENİ TOPLULUK ÖNERİSİ",
         description=f"```{suggestion}```",
         color=0x000000,
         timestamp=datetime.now()
@@ -222,7 +222,7 @@ async def oneri(ctx, *, content: str = None):
     embed.add_field(name="📊 Oylama Durumu", value="⏳ `Değerlendiriliyor...`", inline=True)
     embed.set_author(name=f"{ctx.author.name} tarafından önerildi", icon_url=ctx.author.display_avatar.url)
     embed.set_thumbnail(url=bot.user.display_avatar.url if bot.user else None)
-    embed.set_footer(text=f"Venom Community • {ctx.guild.name}", icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
+    embed.set_footer(text=f"006 Community • {ctx.guild.name}", icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
 
     msg = await target_channel.send(embed=embed)
     await msg.add_reaction("👍")
@@ -260,10 +260,10 @@ async def oneribitir(ctx):
             downvotes = reaction.count - 1
 
     decision = "✅ KABUL EDİLDİ" if upvotes > downvotes else ("❌ REDDEDİLDİ" if downvotes > upvotes else "🤝 BERABERE")
-    decision_color = 0x0b0b0b if upvotes > downvotes else (0x0b0b0b if downvotes > upvotes else 0x0b0b0b)
+    decision_color = 0xD4AF37 if upvotes > downvotes else (0xD4AF37 if downvotes > upvotes else 0xD4AF37)
 
     orig_embed = last_msg.embeds[0]
-    final_embed = discord.Embed(title=f"🗳️ VENOM | ÖNERİ SONUÇLANDI", description=orig_embed.description, color=decision_color, timestamp=datetime.now())
+    final_embed = discord.Embed(title=f"🗳️ 006 | ÖNERİ SONUÇLANDI", description=orig_embed.description, color=decision_color, timestamp=datetime.now())
     final_embed.set_author(name=orig_embed.author.name, icon_url=orig_embed.author.icon_url)
     final_embed.set_thumbnail(url=orig_embed.thumbnail.url)
     final_embed.add_field(name="👤 Öneren Üye", value=orig_embed.fields[0].value, inline=True)
@@ -335,10 +335,10 @@ async def on_message(message: discord.Message):
                             embed = discord.Embed(
                                 title="MESAJ YAZARSAN MUTE YERSİN | IF YOU SEND MESSAGE YOU WILL GET MUTE",
                                 description="Bu kanal r4t yiyenleri yakalamak için, mesaj yazarsan mute yersin. | This channel trap for r4t users, if you send message you will get mute.",
-                                color=0x0b0b0b
+                                color=0xD4AF37
                             )
                             embed.add_field(name="🍯 Mute", value=f"`{honeypot_data['mutes_count']}`", inline=False)
-                            embed.set_footer(text="Venom Security & Honeypot System", icon_url=bot.user.display_avatar.url if bot.user else None)
+                            embed.set_footer(text="006 Security & Honeypot System", icon_url=bot.user.display_avatar.url if bot.user else None)
                             await webhook.edit_message(honeypot_data["embed_message_id"], embed=embed)
                         except:
                             msg_to_edit = await ch.fetch_message(honeypot_data["embed_message_id"])
@@ -402,7 +402,7 @@ async def on_message(message: discord.Message):
 
     await bot.process_commands(message)
 
-# 4. YOUTUBE NOTIFIER SYSTEM (@WSVenom) - Every 30 seconds
+# 4. YOUTUBE NOTIFIER SYSTEM (@006_mnfs) - Every 30 seconds
 last_video_id = None
 
 @tasks.loop(seconds=30)
@@ -410,7 +410,7 @@ async def check_youtube():
     global last_video_id
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        resp = requests.get("https://www.youtube.com/@WSVenom", headers=headers, timeout=10)
+        resp = requests.get("https://www.youtube.com/@006_mnfs", headers=headers, timeout=10)
         if resp.status_code == 200:
             match = re.search(r'"channelId":"(UC[a-zA-Z0-9_-]+)"', resp.text)
             if match:
@@ -443,7 +443,7 @@ async def check_youtube():
                                         timestamp=datetime.now()
                                     )
                                     embed.set_thumbnail(url=bot.user.display_avatar.url if bot.user else None)
-                                    embed.set_footer(text="Venom YouTube RSS", icon_url=guild.icon.url if guild.icon else None)
+                                    embed.set_footer(text="006 YouTube RSS", icon_url=guild.icon.url if guild.icon else None)
                                     await channel.send(content="@everyone 🚀 **YENİ VİDEO ŞUAN KANALIMIZDA YAYINDA!** ||@here||", embed=embed)
     except Exception as int_e:
         print(f"YouTube kontrol hatası: {int_e}")
@@ -454,7 +454,7 @@ async def before_check_youtube():
 
 @bot.event
 async def on_ready():
-    print(f"Venom Master Bot aktif ve hazir: {bot.user.name}")
+    print(f"006 Master Bot aktif ve hazir: {bot.user.name}")
     if not check_youtube.is_running():
         check_youtube.start()
 
