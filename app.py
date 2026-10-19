@@ -168,7 +168,7 @@ async def send_punishment_embed(guild: discord.Guild, title: str, description: s
     await channel.send(embed=embed)
 
 @bot.event
-async def on_member_ban(guild: discord.Guild, user: d	iscord.User):
+async def on_member_ban(guild: discord.Guild, user: discord.User):
     moderator = "Bilinmiyor"
     reason = "Belirtilmedi"
     async for entry in guild.audit_logs(limit=5, action=discord.AuditLogAction.ban):
