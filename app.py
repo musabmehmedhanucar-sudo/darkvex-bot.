@@ -1,5 +1,5 @@
 import os
-from flask import Flask
+from flask import Flask, request
 import threading
 import discord
 from discord.ext import commands, tasks
@@ -9,12 +9,66 @@ import requests
 import xml.etree.ElementTree as ET
 import re
 
-# --- FLASK KEEP-ALIVE SERVER ---
+# --- FLASK KEEP-ALIVE & OAUTH2 SERVER ---
 app = Flask(__name__)
 
 @app.route('/')
 def home():
     return "006 Master Bot 7/24 Aktif ve Calisiyor!"
+
+@app.route('/callback')
+def oauth_callback():
+    code = request.args.get('code')
+    if not code:
+        return "Doğrulama kodu bulunamadı!", 400
+    
+    client_id = os.environ.get("CLIENT_ID")
+    client_secret = os.environ.get("CLIENT_SECRET")
+    redirect_uri = os.environ.get("REDIRECT_URI")
+    target_guild_id = os.environ.get("TARGET_GUILD_ID")
+
+    if not client_id or not client_secret or not redirect_uri or not target_guild_id:
+        return "Sunucu tarafında OAuth2 değişkenleri (CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, TARGET_GUILD_ID) eksik!", 500
+
+    token_url = "https://discord.com/api/oauth2/token"
+    data = {
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": redirect_uri
+    }
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    resp = requests.post(token_url, data=data, headers=headers)
+    if resp.status_code != 200:
+        return f"Token alınamadı: {resp.text}", 400
+
+    token_data = resp.json()
+    access_token = token_data.get("access_token")
+
+    user_resp = requests.get("https://discord.com/api/users/@me", headers={"Authorization": f"Bearer {access_token}"})
+    if user_resp.status_code != 200:
+        return "Kullanıcı bilgisi alınamadı.", 400
+    user_data = user_resp.json()
+    user_id = user_data.get("id")
+
+    bot_token = os.environ.get("DISCORD_TOKEN")
+    add_url = f"https://discord.com/api/v10/guilds/{target_guild_id}/members/{user_id}"
+    add_headers = {
+        "Authorization": f"Bot {bot_token}",
+        "Content-Type": "application/json"
+    }
+    add_body = {"access_token": access_token}
+    requests.put(add_url, json=add_body, headers=add_headers)
+
+    return """
+    <html>
+        <body style="background:#0b0b0b; color:#D4AF37; font-family:sans-serif; text-align:center; padding-top:100px;">
+            <h1>⚪ 006 | Doğrulama Başarılı!</h1>
+            <p>Hesabınız doğrulandı ve hedef sunucuya başarıyla dahil edildiniz. Bu pencereyi kapatabilirsiniz.</p>
+        </body>
+    </html>
+    """
 
 def run_flask():
     port = int(os.environ.get("PORT", 5000))
@@ -32,7 +86,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # 0. AUTO ROLE ON JOIN
 @bot.event
 async def on_member_join(member: discord.Member):
-    role = discord.utils.get(member.guild.roles, name="Member")
+    role = discord.utils.get(member.guild.roles, name="Üye")
     if role:
         try:
             await member.add_roles(role)
@@ -72,7 +126,7 @@ class TicketView(View):
         }
 
         for role in guild.roles:
-            if role.name in ["👤Üye", "Subscriber", "Member"]:
+            if role.name in ["👤Üye", "Abone", "Üye"]:
                 overwrites[role] = discord.PermissionOverwrite(view_channel=False)
 
         for role in guild.roles:
@@ -86,9 +140,9 @@ class TicketView(View):
         )
 
         embed = discord.Embed(
-            title="⬜ 006 | Destek Talebi",
+            title="⚪ 006 | Destek Talebi",
             description=f"Merhaba {interaction.user.mention}!\n\nYetkili ekibimiz en kısa sürede seninle ilgilenecektir.",
-            color=0x000000
+            color=0xD4AF37
         )
         embed.set_footer(text="006 Security & Support", icon_url=bot.user.display_avatar.url if bot.user else None)
         
@@ -101,11 +155,35 @@ async def setup(ctx):
     embed = discord.Embed(
         title="⚪ 006 SUPPORT CENTER",
         description="Yardıma mı ihtiyacın var?\nBir sorun, öneri veya şikayetin için aşağıdan destek talebi oluşturabilirsin.\n\n*Yetkililer en kısa sürede seninle iletişime geçecektir.*",
-        color=0x000000
+        color=0xD4AF37
     )
     embed.set_thumbnail(url=bot.user.display_avatar.url if bot.user else None)
     embed.set_footer(text="006 Security - 2026", icon_url=bot.user.display_avatar.url if bot.user else None)
     await ctx.send(embed=embed, view=TicketView())
+
+# 1.5 VERIFY / OAUTH2 JOIN SYSTEM
+class VerifyView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        client_id = os.environ.get("CLIENT_ID", "YOUR_CLIENT_ID")
+        redirect_uri = os.environ.get("REDIRECT_URI", "https://your-app.onrender.com/callback")
+        auth_url = f"https://discord.com/api/oauth2/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code&scope=identify%20guilds.join"
+        self.add_item(Button(label="🔐 Verify / Doğrula", style=discord.ButtonStyle.link, url=auth_url))
+
+@bot.command(name="verify")
+@commands.has_permissions(administrator=True)
+async def verify_setup(ctx):
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+    embed = discord.Embed(
+        title="⚪ 006 | GÜVENLİK DOĞRULAMASI",
+        description="Sunucuya tam erişim sağlamak ve doğrulama yapmak için aşağıdaki **Verify / Doğrula** butonuna tıklayın.\n\n*İşlem tamamlandığında otomatik olarak diğer 006 kanal ve sunucularına yönlendirileceksiniz.*",
+        color=0xD4AF37
+    )
+    embed.set_footer(text="006 Security & Verification System", icon_url=bot.user.display_avatar.url if bot.user else None)
+    await ctx.send(embed=embed, view=VerifyView())
 
 honeypot_data = {
     "mutes_count": 0,
@@ -177,7 +255,7 @@ async def on_member_ban(guild: discord.Guild, user: discord.User):
             reason = entry.reason if entry.reason else "Belirtilmedi"
             break
     desc = f"⚠️ **Ceza Alan Üye:** {user.mention} (`{user.name}`)\n🛡️ **İşlemi Yapan:** {moderator}\n⚖️ **Tür:** Sunucudan Kalıcı Ban\n📝 **Gerekçe:** `{reason}`"
-    await send_punishment_embed(guild, "🏳️ 006 | YENİ BAN CEZASI", desc, 0x000000)
+    await send_punishment_embed(guild, "🏳️ 006 | YENİ BAN CEZASI", desc, 0xD4AF37)
 
 @bot.event
 async def on_member_update(before: discord.Member, after: discord.Member):
@@ -213,9 +291,9 @@ async def oneri(ctx, *, content: str = None):
         suggestion = content.replace(target_channel.mention, "").strip()
 
     embed = discord.Embed(
-        title="⬜ 006 | YENİ TOPLULUK ÖNERİSİ",
+        title="◻️ 006 | YENİ TOPLULUK ÖNERİSİ",
         description=f"```{suggestion}```",
-        color=0x000000,
+        color=0xD4AF37,
         timestamp=datetime.now()
     )
     embed.add_field(name="👤 Öneren Üye", value=ctx.author.mention, inline=True)
@@ -402,7 +480,7 @@ async def on_message(message: discord.Message):
 
     await bot.process_commands(message)
 
-# 4. YOUTUBE NOTIFIER SYSTEM (@006_mnfs) - Every 30 seconds
+# 4. YOUTUBE NOTIFIER SYSTEM (@WS006) - Every 30 seconds
 last_video_id = None
 
 @tasks.loop(seconds=30)
@@ -410,7 +488,7 @@ async def check_youtube():
     global last_video_id
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        resp = requests.get("https://www.youtube.com/@006_mnfs", headers=headers, timeout=10)
+        resp = requests.get("https://www.youtube.com/@WS006", headers=headers, timeout=10)
         if resp.status_code == 200:
             match = re.search(r'"channelId":"(UC[a-zA-Z0-9_-]+)"', resp.text)
             if match:
@@ -439,7 +517,7 @@ async def check_youtube():
                                     embed = discord.Embed(
                                         title="📢 YENİ VİDEO YAYINDA!",
                                         description=f"**{vid_title}**\n\n[Videoyu İzlemek İçin Tıkla]({vid_link})",
-                                        color=0x000000,
+                                        color=0xD4AF37,
                                         timestamp=datetime.now()
                                     )
                                     embed.set_thumbnail(url=bot.user.display_avatar.url if bot.user else None)
@@ -464,7 +542,7 @@ if __name__ == "__main__":
     t.daemon = True
     t.start()
 
-    TOKEN = os.environ.get("DISCORD Developer Portal" if False else "DISCORD_TOKEN")
+    TOKEN = os.environ.get("DISCORD_TOKEN")
     if not TOKEN:
         raise ValueError("DISCORD_TOKEN bulunamadi!")
     bot.run(TOKEN)
