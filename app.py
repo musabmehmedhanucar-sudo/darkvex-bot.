@@ -628,6 +628,9 @@ async def before_check_youtube():
 
 @bot.event
 async def on_ready():
+    bot.add_view(TicketView())
+    bot.add_view(CloseView())
+    bot.add_view(VerifyView())
     print(f"006 Master Bot aktif ve hazir: {bot.user.name}")
     if not check_youtube.is_running():
         check_youtube.start()
