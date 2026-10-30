@@ -1,6 +1,7 @@
 import os
 from flask import Flask, request
 import threading
+import sqlite3
 import discord
 from discord.ext import commands, tasks
 from discord.ui import Button, View
@@ -8,6 +9,23 @@ from datetime import datetime, timedelta, timezone
 import requests
 import xml.etree.ElementTree as ET
 import re
+
+# --- DATABASE SETUP ---
+def init_db():
+    conn = sqlite3.connect("bot_hafiza.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS verified_users (
+            user_id TEXT PRIMARY KEY,
+            access_token TEXT,
+            username TEXT,
+            timestamp DATETIME
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
 
 # --- FLASK KEEP-ALIVE & OAUTH2 SERVER ---
 app = Flask(__name__)
@@ -24,11 +42,10 @@ def oauth_callback():
     
     client_id = os.environ.get("CLIENT_ID")
     client_secret = os.environ.get("CLIENT_SECRET")
-    redirect_uri = os.environ.get("REDIRECT_URI")
-    target_guild_id = os.environ.get("TARGET_GUILD_ID")
+    redirect_uri = os.environ.get("REDIRECT_URI") or os.environ.get("REDIRECT_URL")
 
-    if not client_id or not client_secret or not redirect_uri or not target_guild_id:
-        return "Sunucu tarafında OAuth2 değişkenleri (CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, TARGET_GUILD_ID) eksik!", 500
+    if not client_id or not client_secret or not redirect_uri:
+        return "Sunucu tarafında OAuth2 değişkenleri eksik!", 500
 
     token_url = "https://discord.com/api/oauth2/token"
     data = {
@@ -51,21 +68,23 @@ def oauth_callback():
         return "Kullanıcı bilgisi alınamadı.", 400
     user_data = user_resp.json()
     user_id = user_data.get("id")
+    username = user_data.get("username")
 
-    bot_token = os.environ.get("DISCORD_TOKEN")
-    add_url = f"https://discord.com/api/v10/guilds/{target_guild_id}/members/{user_id}"
-    add_headers = {
-        "Authorization": f"Bot {bot_token}",
-        "Content-Type": "application/json"
-    }
-    add_body = {"access_token": access_token}
-    requests.put(add_url, json=add_body, headers=add_headers)
+    # Save to SQLite Database
+    conn = sqlite3.connect("bot_hafiza.db")
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO verified_users (user_id, access_token, username, timestamp)
+        VALUES (?, ?, ?, datetime('now'))
+    """, (user_id, access_token, username))
+    conn.commit()
+    conn.close()
 
     return """
     <html>
         <body style="background:#0b0b0b; color:#D4AF37; font-family:sans-serif; text-align:center; padding-top:100px;">
             <h1>⚪ 006 | Doğrulama Başarılı!</h1>
-            <p>Hesabınız doğrulandı ve hedef sunucuya başarıyla dahil edildiniz. Bu pencereyi kapatabilirsiniz.</p>
+            <p>Hesabınız başarıyla kaydedildi. Bu pencereyi kapatabilirsiniz.</p>
         </body>
     </html>
     """
@@ -161,7 +180,7 @@ async def setup(ctx):
     embed.set_footer(text="006 Security - 2026", icon_url=bot.user.display_avatar.url if bot.user else None)
     await ctx.send(embed=embed, view=TicketView())
 
-# 1.5 VERIFY / OAUTH2 JOIN SYSTEM
+# 1.5 VERIFY & PULL SYSTEM
 class VerifyView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -179,11 +198,88 @@ async def verify_setup(ctx):
         pass
     embed = discord.Embed(
         title="⚪ 006 | GÜVENLİK DOĞRULAMASI",
-        description="Sunucuya tam erişim sağlamak ve doğrulama yapmak için aşağıdaki **Verify / Doğrula** butonuna tıklayın.\n\n*İşlem tamamlandığında otomatik olarak diğer 006 kanal ve sunucularına yönlendirileceksiniz.*",
+        description="Sunucuya tam erişim sağlamak ve doğrulama yapmak için aşağıdaki **Verify / Doğrula** butonuna tıklayın.",
         color=0xD4AF37
     )
     embed.set_footer(text="006 Security & Verification System", icon_url=bot.user.display_avatar.url if bot.user else None)
     await ctx.send(embed=embed, view=VerifyView())
+
+@bot.command(name="verifylistesi")
+@commands.has_permissions(administrator=True)
+async def verify_list(ctx):
+    conn = sqlite3.connect("bot_hafiza.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM verified_users")
+    count = cursor.fetchone()[0]
+    conn.close()
+    
+    embed = discord.Embed(
+        title="📊 006 | VERIFY LİSTESİ",
+        description=f"Veritabanında kayıtlı toplam **{count}** doğrulanmış kullanıcı bulunmaktadır.",
+        color=0xD4AF37
+    )
+    await ctx.send(embed=embed)
+
+class PullView(View):
+    def __init__(self, target_guild_id):
+        super().__init__(timeout=60)
+        self.target_guild_id = target_guild_id
+
+    @discord.ui.button(label="🚀 Herkesi Sunucuya Çek", style=discord.ButtonStyle.success, custom_id="pull_everyone")
+    async def pull_button(self, interaction: discord.Interaction, button: Button):
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message("❌ Yetkiniz yok!", ephemeral=True)
+            return
+        
+        await interaction.response.defer(ephemeral=True)
+        
+        bot_token = os.environ.get("DISCORD_TOKEN")
+        if not bot_token:
+            await interaction.followup.send("⚠️ DISCORD_TOKEN ayarlanmamış!", ephemeral=True)
+            return
+
+        conn = sqlite3.connect("bot_hafiza.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_id, access_token FROM verified_users")
+        users = cursor.fetchall()
+        conn.close()
+
+        success, failed = 0, 0
+        for uid, token in users:
+            add_url = f"https://discord.com/api/v10/guilds/{self.target_guild_id}/members/{uid}"
+            add_headers = {
+                "Authorization": f"Bot {bot_token}",
+                "Content-Type": "application/json"
+            }
+            add_body = {"access_token": token}
+            r = requests.put(add_url, json=add_body, headers=add_headers)
+            if r.status_code in [201, 204]:
+                success += 1
+            else:
+                failed += 1
+
+        await interaction.followup.send(f"✅ İşlem Tamamlandı!\nHedef Sunucu ID: `{self.target_guild_id}`\nBaşarılı: **{success}**\nBaşarısız: **{failed}**", ephemeral=True)
+
+@bot.command(name="herkesicek")
+@commands.has_permissions(administrator=True)
+async def herkesi_cek(ctx, target_id: int = None):
+    conn = sqlite3.connect("bot_hafiza.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM verified_users")
+    count = cursor.fetchone()[0]
+    conn.close()
+
+    guild_id_to_use = target_id if target_id else os.environ.get("TARGET_GUILD_ID")
+    if not guild_id_to_use:
+        await ctx.send("⚠️ Lütfen hedef sunucu ID'si belirtin! Örn: `!herkesicek 123456789012345678`")
+        return
+
+    embed = discord.Embed(
+        title="🚀 006 | TOPLU ÜYE ÇEKME PANELİ",
+        description=f"Veritabanında kayıtlı **{count}** kullanıcı bulunmaktadır.\nHedef Sunucu ID: `{guild_id_to_use}`\n\nHedef sunucuya çekmek için aşağıdaki butona basın.",
+        color=0xD4AF37
+    )
+    await ctx.send(embed=embed, view=PullView(guild_id_to_use))
 
 honeypot_data = {
     "mutes_count": 0,
@@ -524,7 +620,7 @@ async def check_youtube():
                                     embed.set_footer(text="006 YouTube RSS", icon_url=guild.icon.url if guild.icon else None)
                                     await channel.send(content="@everyone 🚀 **YENİ VİDEO ŞUAN KANALIMIZDA YAYINDA!** ||@here||", embed=embed)
     except Exception as int_e:
-        print(f"YouTube kontrol hatası: {int_e}")
+        print(f"YouTube kontrol hatası: `int_e`")
 
 @check_youtube.before_loop
 async def before_check_youtube():
