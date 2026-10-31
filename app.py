@@ -204,6 +204,39 @@ async def verify_setup(ctx):
     embed.set_footer(text="006 Security & Verification System", icon_url=bot.user.display_avatar.url if bot.user else None)
     await ctx.send(embed=embed, view=VerifyView())
 
+class VerifyListView(View):
+    def __init__(self):
+        super().__init__(timeout=60)
+
+    @discord.ui.button(label="👥 Kullanıcıları Göster", style=discord.ButtonStyle.primary, custom_id="show_verified_users")
+    async def show_users(self, interaction: discord.Interaction, button: Button):
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message("❌ Yetkiniz yok!", ephemeral=True)
+            return
+
+        conn = sqlite3.connect("bot_hafiza.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT username FROM verified_users")
+        rows = cursor.fetchall()
+        conn.close()
+
+        if not rows:
+            await interaction.response.send_message("⚠️ Veritabanında kayıtlı kullanıcı bulunmuyor.", ephemeral=True)
+            return
+
+        usernames = [row[0] for row in rows if row[0]]
+        user_list_str = ", ".join(usernames) if usernames else "Kullanıcı adı bulunamadı."
+        
+        if len(user_list_str) > 4000:
+            user_list_str = user_list_str[:3997] + "..."
+
+        embed = discord.Embed(
+            title="📋 006 | DOĞRULANMIŞ KULLANICILAR",
+            description=f"```{user_list_str}```",
+            color=0xD4AF37
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 @bot.command(name="verifylistesi")
 @commands.has_permissions(administrator=True)
 async def verify_list(ctx):
@@ -218,7 +251,7 @@ async def verify_list(ctx):
         description=f"Veritabanında kayıtlı toplam **{count}** doğrulanmış kullanıcı bulunmaktadır.",
         color=0xD4AF37
     )
-    await ctx.send(embed=embed)
+    await ctx.send(embed=embed, view=VerifyListView())
 
 class PullView(View):
     def __init__(self, target_guild_id):
